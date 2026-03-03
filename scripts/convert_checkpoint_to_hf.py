@@ -233,6 +233,8 @@ def convert_and_save(input_path, data_type, output_dir):
         output_dir: Directory to save the HuggingFace model.
     """
     print(f"Loading checkpoint from {input_path}...")
+    # Note: weights_only=False is required for legacy checkpoints containing
+    # non-tensor objects. Only use with trusted checkpoint sources.
     raw = torch.load(input_path, map_location='cpu', weights_only=False)
     ckpt = raw.get('model', raw)
 

@@ -190,7 +190,18 @@ class SkySenseViTModel(SkySenseViTPreTrainedModel):
 
     @staticmethod
     def resize_pos_embed(pos_embed, input_shape, pos_shape, mode='bicubic'):
-        """Resize position embeddings via interpolation."""
+        """Resize position embeddings via interpolation.
+
+        Args:
+            pos_embed (torch.Tensor): Position embedding of shape (B, L, C),
+                where L = 1 (cls_token) + pos_h * pos_w.
+            input_shape (tuple[int, int]): Target spatial size (H, W).
+            pos_shape (tuple[int, int]): Original spatial size (pos_h, pos_w).
+            mode (str): Interpolation mode. Default: 'bicubic'.
+
+        Returns:
+            torch.Tensor: Resized position embedding of shape (B, 1 + H*W, C).
+        """
         assert pos_embed.ndim == 3
         pos_h, pos_w = pos_shape
         cls_token_weight = pos_embed[:, 0:1]

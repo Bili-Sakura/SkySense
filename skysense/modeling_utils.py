@@ -214,8 +214,8 @@ class WindowMSAV2(nn.Module):
             coords_table[:, :, 0] /= (self.pretrained_window_size[0] - 1)
             coords_table[:, :, 1] /= (self.pretrained_window_size[1] - 1)
         else:
-            coords_table[:, :, 0] /= (Wh - 1)
-            coords_table[:, :, 1] /= (Ww - 1)
+            coords_table[:, :, 0] /= max(Wh - 1, 1)
+            coords_table[:, :, 1] /= max(Ww - 1, 1)
         coords_table *= 8  # normalize to -8, 8
         coords_table = (
             torch.sign(coords_table)

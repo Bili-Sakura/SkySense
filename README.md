@@ -37,6 +37,27 @@ SkySense, **a multi-modal remote sensing foundation model (MM-RSFM)**, features 
 
 # Installation
 
+## HuggingFace Transformers (Recommended)
+
+Requires only **PyTorch 2.0+** and **HuggingFace Transformers**. No mmcv, mmcls, mmseg, or mmdet required.
+
+Step 1. Create a conda environment and activate it.
+
+```bash
+conda create --name skysense python=3.10
+conda activate skysense
+```
+
+Step 2. Install PyTorch (2.0+) and HuggingFace Transformers.
+```bash
+pip install torch>=2.0 transformers
+```
+
+## Legacy Installation (mmcv-based, for downstream detection/segmentation configs)
+
+<details>
+<summary>Click to expand legacy installation</summary>
+
 Step 1. Create a conda environment and activate it. Install gdal 3.4.0.
 
 ```bash
@@ -57,11 +78,99 @@ mim install mmcv-full==1.7.1
 pip install mmcls==0.25.0 mmsegmentation==0.30.0 mmdet==2.28.2 yapf==0.40.1 timm==0.6.13 rasterio==1.2.10 scikit-learn==1.2.2
 ```
 
+</details>
+
 # Usage
 
-The following describes how to utilize SkySense's pluggable components to adapt to high-resolution RGB imagery,  Sentinel-2 multispectral imagery, Sentinel-1 SAR imagery, and so on.
+The following describes how to utilize SkySense's pluggable components to adapt to high-resolution RGB imagery, Sentinel-2 multispectral imagery, Sentinel-1 SAR imagery, and so on.
 
-## Load the pre-trained weight of SkySense
+## Convert Checkpoint to HuggingFace Format
+
+Convert original SkySense pre-trained weights to HuggingFace format:
+
+```bash
+# Convert HR/RGB backbone (Swin Transformer V2 - Huge)
+python scripts/convert_checkpoint_to_hf.py \
+    --input-path skysense_pretrained.pth \
+    --data-type rgb \
+    --output-dir ./skysense-swinv2-huge-rgb
+
+# Convert Sentinel-2 backbone (Vision Transformer - Large)
+python scripts/convert_checkpoint_to_hf.py \
+    --input-path skysense_pretrained.pth \
+    --data-type s2 \
+    --output-dir ./skysense-vit-large-s2
+
+# Convert Sentinel-1 backbone (Vision Transformer - Large)
+python scripts/convert_checkpoint_to_hf.py \
+    --input-path skysense_pretrained.pth \
+    --data-type s1 \
+    --output-dir ./skysense-vit-large-s1
+
+# Convert RGBNIR backbone (Swin Transformer V2 - Huge, 4 channels)
+python scripts/convert_checkpoint_to_hf.py \
+    --input-path skysense_pretrained.pth \
+    --data-type rgbnir \
+    --output-dir ./skysense-swinv2-huge-rgbnir
+```
+
+## Load Pre-trained Models (HuggingFace)
+
+```python
+# For high-resolution RGB imagery (Swin Transformer V2 - Huge)
+from skysense import SkySenseSwinV2Model
+model = SkySenseSwinV2Model.from_pretrained('./skysense-swinv2-huge-rgb')
+```
+
+```python
+# For Sentinel-2 imagery (Vision Transformer - Large)
+from skysense import SkySenseViTModel
+model = SkySenseViTModel.from_pretrained('./skysense-vit-large-s2')
+```
+
+## Feature Extraction Pipeline
+
+```python
+import torch
+from skysense import SkySenseSwinV2Model, SkySenseSwinV2Config
+from skysense.pipeline import SkySenseFeatureExtractionPipeline
+
+# Initialize model (from pretrained or fresh)
+config = SkySenseSwinV2Config(arch='huge', in_channels=3)
+model = SkySenseSwinV2Model(config)
+
+# Create pipeline
+pipe = SkySenseFeatureExtractionPipeline(model=model, device='cpu')
+
+# Extract features
+features = pipe(torch.randn(1, 3, 224, 224))
+print(features['last_hidden_state'].shape)
+```
+
+## Initialize Models from Scratch
+
+```python
+from skysense import SkySenseSwinV2Config, SkySenseSwinV2Model
+from skysense import SkySenseViTConfig, SkySenseViTModel
+
+# Swin Transformer V2 - Huge for RGB (default config)
+config = SkySenseSwinV2Config(arch='huge', in_channels=3)
+model = SkySenseSwinV2Model(config)
+
+# Vision Transformer - Large for Sentinel-2 (10-band, default config)
+config = SkySenseViTConfig(in_channels=10)
+model = SkySenseViTModel(config)
+
+# Vision Transformer - Large for Sentinel-1 (2-band)
+config = SkySenseViTConfig(in_channels=2)
+model = SkySenseViTModel(config)
+```
+
+## Load Pre-trained Weights (Legacy)
+
+<details>
+<summary>Click to expand legacy usage</summary>
+
 ```python
 # For high-resolution RGB imagery (band order: R, G, B) or RGBNIR imagery (band order: R, G, B, NIR). 
 # Model architecture: Swin Tranformer v2 - Huge
@@ -87,6 +196,8 @@ msg = vit_model.load_state_dict(checkpoint, strict=False)
 # missing_keys=[], unexpected_keys=['ctpe']
 vit_model = vit_model.cuda()
 ```
+
+</details>
 
 ## Example Usage of Downstream Tasks & Results
 
